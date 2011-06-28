@@ -42,10 +42,18 @@ int lol(vm* eng){
 	return size;
 }
 
+void print(int i){
+	cout << i << endl;
+}
+
 int lol2(vm* eng){
-	int a = eng->stack[eng->size + 0x100];
+	int a = 3;
+	print(a);
 	return 1;
 }
+
+
+
 
 int main(){
 	// self modifying code test
@@ -60,10 +68,8 @@ int main(){
 
 	vm* engine = new vm();
 	engine->eval(l);
-	engine->eval(l);
-	engine->eval(l);
 
-	//lol2(engine);
+	lol2(engine);
 
 	codegen* compiler = new codegen(engine);
 	int pushes = 0;
@@ -147,11 +153,17 @@ int main(){
 		local++;
 	}
 
-	// simulate one_plus_one: 1 1 + +
+	// simulate one_plus_one: 2 1 +
 	// C7 45 F8 01 00 00 00		mov         dword ptr [i],1
-	w(0xc7); w(0x45); w(var); i(1);
+	w(0xc7); w(0x45); w(var); i(2);
 	// local ++ (each push does this)
 	local++;
+
+	w(0x8b); w(0x45); w(var + 4);
+	w(0x50);
+	w(0xb8); i((int)&print);
+	w(0xff); w(0xd0); // call eax
+	w(0x83); w(0xC4); w(0x04); // add 4 to the ESP
 
 	// C7 45 F8 01 00 00 00		mov         dword ptr [i],1
 	w(0xc7); w(0x45); w(var); i(1);
@@ -168,15 +180,38 @@ int main(){
 	// overwrite local-1 (what used to be local-2)
 	w(0x89); w(0x45); w(var + 4);
 
-	// check that local > 1 
-	if (local < 2) {cerr << "JIT Compilation: Cannot compile code, insufficient stack space." << endl; return 0;}
-	// mov eax, local-2
-	w(0x8b); w(0x45); w(var + 8);
-	// add eax, local-1
-	w(0x03); w(0x45); w(var + 4);
-	local--;
-	// overwrite local-1 (what used to be local-2)
-	w(0x89); w(0x45); w(var + 4);
+
+	// iterate through pushes and add back into the stack
+	int push;
+	for (push = 0; push < pushes; push++){
+		/*    
+		47: 	eng->stack[eng->size++] = a;
+		002730C5 8B 45 08             mov         eax,dword ptr [eng]  
+		002730C8 8B 48 04             mov         ecx,dword ptr [eax+4]  
+		002730CB 8B 55 08             mov         edx,dword ptr [eng]  
+		002730CE 8B 02                mov         eax,dword ptr [edx]  
+		002730D0 8B 55 (0x100-8-(p*4))mov         edx,dword ptr [a]  
+		002730D3 89 14 88             mov         dword ptr [eax+ecx*4],edx  
+		002730D6 8B 45 08             mov         eax,dword ptr [eng]  
+		002730D9 8B 48 04             mov         ecx,dword ptr [eax+4]  
+		002730DC 83 C1 01             add         ecx,1  
+		002730DF 8B 55 08             mov         edx,dword ptr [eng]  
+		002730E2 89 4A 04             mov         dword ptr [edx+4],ecx  
+		*/
+
+		w(0x8b); w(0x45); w(0x08);
+		w(0x8b); w(0x48); w(0x04);
+		w(0x8b); w(0x55); w(0x08);
+		w(0x8b); w(0x02);
+		w(0x8b); w(0x55); w(0x100-8-(push*4));
+		w(0x89); w(0x14); w(0x88);
+		w(0x8b); w(0x45); w(0x08);
+		w(0x8b); w(0x48); w(0x04);
+		w(0x83); w(0xc1); w(0x01);
+		w(0x8b); w(0x55); w(0x08);
+		w(0x89); w(0x4a); w(0x04);
+	}
+
 
 #undef var
 #undef i
@@ -187,6 +222,11 @@ int main(){
 
 	int eax = ((int(*)(void*))fun)((void*)engine);
 	cout << eax << " " << pushes << endl;
+
+	int i;
+	for (i = 0; i < engine->size; i++){
+		printf("%x\n", engine->stack[i]);
+	}
 
 	string lol;
 	cin >> lol;
