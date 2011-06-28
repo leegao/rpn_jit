@@ -71,7 +71,7 @@ jitter codegen::compile(vector<int>* il){
 		0x57, // push edi
 		0x8d, 0xbd, 0x34, 0xff, 0xff, 0xff, // lea edi, [ebp-0xcc]
 
-		0xf3, 0xab, // rep STOS dword ptr es:[edi]
+		//0xf3, 0xab, // rep STOS dword ptr es:[edi]
 
 		/* Set the vm->stack to the correct position
 		00EA30BE 8B 45 08             mov         eax,dword ptr [eng]  
@@ -177,17 +177,6 @@ jitter codegen::compile(vector<int>* il){
 		}
 	}
 
-	// check that local > 1 
-	if (local < 2) {cerr << "JIT Compilation: Cannot compile code, insufficient stack space." << endl; return 0;}
-	// mov eax, local-2
-	w(0x8b); w(0x45); w(var + 8);
-	// add eax, local-1
-	w(0x03); w(0x45); w(var + 4);
-	local--;
-	// overwrite local-1 (what used to be local-2)
-	w(0x89); w(0x45); w(var + 4);
-
-
 	// iterate through pushes and add back into the stack
 	int push;
 	for (push = 0; push < pushes; push++){
@@ -225,21 +214,26 @@ jitter codegen::compile(vector<int>* il){
 #undef w
 
 	memcpy(page, ret, sizeof(ret));
-	return (jitter)page;
+	return (jitter)fun;
 }
 
 int main(){
 	lexer* l = new lexer("add: +");
 	l->lex("add_1: 1 add");
-	l->lex("1 2 +");
+	l->lex("1 2 add add_1");
 
 	vm* engine = new vm();
 	engine->eval(l);
-	engine->eval(l);
-	engine->eval(l);
 
 	codegen* compiler = new codegen(engine);
-	jitter fun_handle = compiler->compile(l->il);
+	jitter fun = compiler->compile(l->il);
+
+	fun(engine);
+
+	int i;
+	for (i = 0; i < engine->size; i++){
+		printf("%x\n", engine->stack[i]);
+	}
 
 	string lol;
 	cin >> lol;
