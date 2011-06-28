@@ -23,7 +23,6 @@ int codegen::get_pops(vector<int>* il, int* pushes){
 			// theoretically, this case is impossible
 			//int pushes_, pops_;
 			//pops_ = get_pops(procedures->at((d & VAL) - CALL_PROC)->il, procedures, &pushes_);
-			cerr << "Compile Error: Cannot compile unflattened code" << endl;
 			return -1;
 		} else {
 			// load operator, increments pushes
@@ -48,7 +47,10 @@ jitter codegen::compile(vector<int>* il){
 	int pushes = 0;
 	int pops = get_pops(il, &pushes);
 
-	if (pops < 0) return 0;
+	if (pops < 0) {
+		cerr << "JIT Error: Cannot compile unflattened code" << endl;
+		return 0;
+	}
 
 	unsigned char start[] = {
 		// eax is pushes, ecx is pops, edx is engine
@@ -269,9 +271,10 @@ jitter codegen::compile(vector<int>* il){
 int main(){
 	lexer* l = new lexer("add: +");
 	l->lex("add_1: 1 add");
-	l->lex("1 2 5 ^ add");
+	l->lex("1 2 5 add add");
 
 	vm* engine = new vm();
+	engine->eval(l);
 	engine->eval(l);
 
 	codegen* compiler = new codegen(engine);
@@ -289,36 +292,3 @@ int main(){
 
 	return 0;
 }
-
-/*int main(){
-	lexer* l = new lexer("add: +");
-	l->lex("add_1: 1 add");
-	l->lex("test: + + + +");
-	l->lex("test2: 3 1 2 3 4 + + + -");
-	l->lex("1 2 * add_1 add_1");
-
-	vm* engine = new vm();
-	engine->eval(l);
-	engine->eval(l);
-	engine->eval(l);
-
-	int i;
-	for (i = 0; i < engine->size; i++){
-		printf("%x\n", engine->stack[i]);
-	}
-
-	vector<int>::iterator it;
-	for (it = l->il->begin(); it < l->il->end(); it++){
-		printf("%x ", *it);
-	}
-
-	codegen* compiler = new codegen(engine);
-	int j = 0;
-	int pops = compiler->get_pops(l->procedures->at(3)->il, l->procedures, &j);
-
-	cout << "\n" << pops << " " << j << endl;
-
-	string lol;
-	cin >> lol;
-	return 0;
-}*/

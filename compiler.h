@@ -7,7 +7,7 @@
 #include <vector>
 #include <map>
 
-typedef int (*jitter) (vm*);
+
 
 class codegen{
 public:

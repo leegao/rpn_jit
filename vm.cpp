@@ -79,7 +79,7 @@ bool vm::eval(lexer* l){
 				break;
 			default:
 				{
-					int index = val - CALL_PROC;
+					size_t index = val - CALL_PROC;
 					// call the procedure
 					if (index < 0 || index >= l->procedures->size()){
 						cerr << "Runtime Error: Procedure does not exist." << endl;
@@ -88,19 +88,36 @@ bool vm::eval(lexer* l){
 					if (l->procedures->at(index)->status > NORMAL)
 						cerr << "Debug: Inlined function encountered." << endl;
 					
-					// evaluate the current chunk of code with context to the global lexer (pass in reference too)
-					lexer* proxy = new lexer(l, l->procedures->at(index)->il);
-					if (!eval(proxy)) return false;
+					// check if jitted
+					jitter fun;
+					if ((fun = l->procedures->at(index)->jit)){
+						fun(this);
+					} else {
+						// evaluate the current chunk of code with context to the global lexer (pass in reference too)
+						lexer* proxy = new lexer(l, l->procedures->at(index)->il);
+						if (!eval(proxy)) return false;
 
-					(l->procedures->at(index)->calls)++;
+						(l->procedures->at(index)->calls)++;
 
-					// add in the metadata for procedure inlining
-					// once a procedure is flattened, track its call number to determine if it's a candidate for jitting
-					if (l->procedures->at(index)->calls > 0){
-						struct inline_meta* meta = new (struct inline_meta)();
-						meta->a = lptr;
-						meta->b = index;
-						v.push_back(meta);
+						// add in the metadata for procedure inlining
+						// once a procedure is flattened, track its call number to determine if it's a candidate for jitting
+						if (l->procedures->at(index)->calls > 0){
+							struct inline_meta* meta = new (struct inline_meta)();
+							meta->a = lptr;
+							meta->b = index;
+							v.push_back(meta);
+						}
+
+						if (l->procedures->at(index)->calls > 1){
+							// jit compile this.
+							int _;
+							codegen* compiler;
+							if ((compiler = new codegen(this))->get_pops(l->procedures->at(index)->il, &_) >= 0){
+								// okay to jit the procedure
+								jitter func = compiler->compile(l->procedures->at(index)->il);
+								l->procedures->at(index)->jit = func;
+							}
+						}
 					}
 				}
 			}

@@ -31,11 +31,14 @@ class tokenizer
         std::string m_delimiters;
 };
 
+typedef int (*jitter) (void*);
+
 struct procedure{
 	vector<int>* il;
 	unsigned char* hash;
 	unsigned char status;
 	int calls;
+	jitter jit;
 };
 
 class lexer{
