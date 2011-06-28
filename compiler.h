@@ -3,6 +3,7 @@
 
 #include "vm.h"
 #include "lexer.h"
+#include "rwx_page.h"
 #include <vector>
 #include <map>
 
