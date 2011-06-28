@@ -145,6 +145,7 @@ bool lexer::lex(string code){
 			i++;
 		}
 		proc->hash = digest((char*)mem, (sizeof(int) * il->size()));
+		proc->status = NORMAL;
 		procedures->push_back(proc);
 		proc_map->push_back(name);
 	} else {

@@ -34,6 +34,7 @@ class tokenizer
 struct procedure{
 	vector<int>* il;
 	unsigned char* hash;
+	unsigned char status;
 };
 
 class lexer{
@@ -68,6 +69,10 @@ public:
 enum opcodes{
 	PLUS, MINUS, MUL, DIV, EXP, MOD,
 	CALL_PROC
+};
+
+enum procedure_status{
+	NORMAL, INLINED, JITTED
 };
 
 #define LAST CALL_PROC
