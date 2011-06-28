@@ -42,7 +42,7 @@ int lol(vm* eng){
 	return size;
 }
 
-void print(int i){
+void print(int i){ // debug only
 	printf("%x\n", i);
 }
 
@@ -59,6 +59,8 @@ jitter codegen::compile(vector<int>* il){
 
 	int pushes = 0;
 	int pops = get_pops(il, &pushes);
+
+	if (pops < 0) return 0;
 
 	unsigned char start[] = {
 		// eax is pushes, ecx is pops, edx is engine
@@ -228,7 +230,7 @@ int main(){
 	codegen* compiler = new codegen(engine);
 	jitter fun = compiler->compile(l->il);
 
-	fun(engine);
+	if (fun) fun(engine);
 
 	int i;
 	for (i = 0; i < engine->size; i++){

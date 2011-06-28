@@ -96,7 +96,7 @@ bool vm::eval(lexer* l){
 
 					// add in the metadata for procedure inlining
 					// once a procedure is flattened, track its call number to determine if it's a candidate for jitting
-					if (l->procedures->at(index)->calls > 0){
+					if (l->procedures->at(index)->calls > 1){
 						struct inline_meta* meta = new (struct inline_meta)();
 						meta->a = lptr;
 						meta->b = index;
