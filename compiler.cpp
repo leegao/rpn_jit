@@ -34,27 +34,14 @@ int codegen::get_pops(vector<int>* il, int* pushes){
 	return pops;
 }
 
-int lol(vm* eng){
-	int i = 1;
-	int size = eng->size;
-	eng->size+=6;
-	eng->stack[eng->size] = 32;
-	return size;
-}
 
-void print(int i){ // debug only
+/*void print(int i){ // debug only
 	printf("%x\n", i);
+}*/
+
+double _pow(double a, int b){
+	return (int)pow(a,b);
 }
-
-int lol2(vm* eng){
-	int a = 1;
-	int b = 2;
-	a = (int)pow((double)a,b);
-	return 1;
-}
-
-
-
 
 jitter codegen::compile(vector<int>* il){
 
@@ -202,6 +189,28 @@ jitter codegen::compile(vector<int>* il){
 				// overwrite local-1 (what used to be local-2)
 				w(0x89); w(0x55); w(var + 4);
 				break;
+			case EXP:
+				// mov eax, local-1
+				w(0x8b); w(0x45); w(var + 4);
+				// push eax
+				w(0x50);
+				// to float local-2
+				w(0xdb); w(0x45); w(var + 8);
+				// push float (ie: sub esp by 8 and store)
+				w(0x83); w(0xec); w(0x08);
+				w(0xdd); w(0x1c); w(0x24);
+				
+				// call pow
+				w(0xb8); i((int)&_pow);
+				w(0xff); w(0xd0); // call eax
+				// advance esp by 4 + 8 (4 -> int, 8 -> double)
+				w(0x83); w(0xc4); w(0x0c);
+				// hack, we need to use intel's internal func, __ftol2_sse to cast float into int
+				// w(0xb8); i((int)&__ftol2_sse); // inlined into _pow
+				local--;
+				// overwrite local-1 (what used to be local-2)
+				w(0x89); w(0x45); w(var + 4);
+				break;
 
 			default:
 				cerr << "JIT Error: unknown operator" << endl; 
@@ -260,12 +269,10 @@ jitter codegen::compile(vector<int>* il){
 int main(){
 	lexer* l = new lexer("add: +");
 	l->lex("add_1: 1 add");
-	l->lex("5 2 -");
+	l->lex("1 2 5 ^ add");
 
 	vm* engine = new vm();
 	engine->eval(l);
-
-	//lol2(engine);
 
 	codegen* compiler = new codegen(engine);
 	jitter fun = compiler->compile(l->il);
