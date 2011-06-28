@@ -151,6 +151,8 @@ bool lexer::lex(string code){
 		proc_map->push_back(name);
 	} else {
 		// Part of main
+		if (this->il)
+			delete this->il;
 		this->il = il;
 	}
 

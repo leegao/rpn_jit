@@ -1,8 +1,9 @@
-#include "lexer.h"
-#include "vm.h"
+
 #include <cstdio>
 #include <cmath>
-
+#include "lexer.h"
+#include "vm.h"
+#include "compiler.h"
 
 struct inline_meta{int a; int b;};
 bool vm::eval(lexer* l){
@@ -136,12 +137,13 @@ bool vm::eval(lexer* l){
 int main(){
 	lexer* l = new lexer("add: +");
 	l->lex("add_1: 1 add");
+	l->lex("test: + + + +");
 	l->lex("1 2 * add_1 add_1");
 
 	vm* engine = new vm();
 	engine->eval(l);
-	//engine->eval(l);
-
+	engine->eval(l);
+	engine->eval(l);
 
 	int i;
 	for (i = 0; i < engine->size; i++){
@@ -152,6 +154,12 @@ int main(){
 	for (it = l->il->begin(); it < l->il->end(); it++){
 		printf("%x ", *it);
 	}
+
+	codegen* compiler = new codegen(engine);
+	int j = 0;
+	int pops = compiler->get_pops(l->procedures->at(2)->il, l->procedures, &j);
+
+	cout << "\n" << pops << " " << j << endl;
 
 	string lol;
 	cin >> lol;

@@ -1,3 +1,6 @@
+#ifndef H_VM
+#define H_VM
+
 #include "lexer.h"
 
 class vm{
@@ -11,3 +14,5 @@ public:
 
 	bool eval(lexer* l);
 };
+
+#endif
