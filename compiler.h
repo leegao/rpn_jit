@@ -7,12 +7,15 @@
 #include <vector>
 #include <map>
 
+typedef int (*jitter) (vm*);
+
 class codegen{
 public:
 	vm* runtime;
 	static map<string, int> m;
 	codegen(vm* runtime) : runtime(runtime) {}
-	int get_pops(vector<int>*, vector<struct procedure*>*, int*);
+	int get_pops(vector<int>*, int*);
+	jitter compile(vector<int>*);
 };
 
 #endif

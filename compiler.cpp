@@ -1,6 +1,6 @@
 #include "compiler.h"
 
-int codegen::get_pops(vector<int>* il, vector<struct procedure*>* procedures, int* pushes){
+int codegen::get_pops(vector<int>* il, int* pushes){
 	// get the number of pops made off of the original stack (this never decreases)
 	int pops = 0, current = 0;
 	vector<int>::iterator op;
@@ -55,37 +55,11 @@ int lol2(vm* eng){
 
 
 
-int main(){
-	// self modifying code test
+jitter codegen::compile(vector<int>* il){
 
-	
-
-	lexer* l = new lexer("add: +");
-	l->lex("add_1: 1 add");
-	l->lex("test: + + + +");
-	l->lex("test2: 3 1 2 3 4 + + + -");
-	l->lex("1 2 * add_1 add_1");
-
-	vm* engine = new vm();
-	engine->eval(l);
-	engine->eval(l);
-	engine->eval(l);
-
-	//lol2(engine);
-
-	int i;
-	//for (i = 0; i < engine->size; i++){
-		//printf("%x\n", engine->stack[i]);
-	//}
-	//cout << "\n";
-
-	codegen* compiler = new codegen(engine);
 	int pushes = 0;
-	int pops = compiler->get_pops(l->procedures->at(3)->il, l->procedures, &pushes);
+	int pops = get_pops(il, &pushes);
 
-	pushes = 1; pops = 1;
-
-	int stack = offsetof(vm, stack), size = offsetof(vm, size);
 	unsigned char start[] = {
 		// eax is pushes, ecx is pops, edx is engine
 		// we'll use eax and ebx and leave edx
@@ -168,40 +142,40 @@ int main(){
 		w(0x83); w(0xC4); w(0x04); // add 4 to the ESP */
 	}
 
-	// simulate one_plus_one: 2 1 +
-	// C7 45 F8 01 00 00 00		mov         dword ptr [i],1
-	w(0xc7); w(0x45); w(var); i(2);
-	// local ++ (each push does this)
-	local++;
+	vector<int>::iterator iptr;
+	for (iptr = il->begin(); iptr < il->end(); iptr++){
+		int op = *iptr;
+		if (op & OP){
+			// Binary operator
+			// check that local > 1 
+			if (local < 2) {
+				cerr << "JIT Error: insufficient stack space." << endl; 
+				return 0;
+			}
 
-	/* // debug 
-		w(0x8b); w(0x45); w(var+4);
-		w(0x50);
-		w(0xb8); i((int)&print);
-		w(0xff); w(0xd0); // call eax
-		w(0x83); w(0xC4); w(0x04); // add 4 to the ESP */
+			switch(op & VAL){
+			case PLUS:
+				// mov eax, local-2
+				w(0x8b); w(0x45); w(var + 8);
+				// add eax, local-1
+				w(0x03); w(0x45); w(var + 4);
+				break;
+			
+			default:
+				cerr << "JIT Error: unknown operator" << endl; 
+				return 0;
+			}
 
-	// C7 45 F8 01 00 00 00		mov         dword ptr [i],1
-	w(0xc7); w(0x45); w(var); i(1);
-	// local ++ (each push does this)
-	local++;
-
-	/* // debug 
-		w(0x8b); w(0x45); w(var+4);
-		w(0x50);
-		w(0xb8); i((int)&print);
-		w(0xff); w(0xd0); // call eax
-		w(0x83); w(0xC4); w(0x04); // add 4 to the ESP */
-
-	// check that local > 1 
-	if (local < 2) {cerr << "JIT Compilation: Cannot compile code, insufficient stack space." << endl; return 0;}
-	// mov eax, local-2
-	w(0x8b); w(0x45); w(var + 8);
-	// add eax, local-1
-	w(0x03); w(0x45); w(var + 4);
-	local--;
-	// overwrite local-1 (what used to be local-2)
-	w(0x89); w(0x45); w(var + 4);
+			local--;
+			// overwrite local-1 (what used to be local-2)
+			w(0x89); w(0x45); w(var + 4);
+		} else { // Value
+			// C7 45 F8 01 00 00 00		mov         dword ptr [i],1
+			w(0xc7); w(0x45); w(var); i(op & VAL);
+			// local ++ (each push does this)
+			local++;
+		}
+	}
 
 	// check that local > 1 
 	if (local < 2) {cerr << "JIT Compilation: Cannot compile code, insufficient stack space." << endl; return 0;}
@@ -251,17 +225,25 @@ int main(){
 #undef w
 
 	memcpy(page, ret, sizeof(ret));
+	return (jitter)page;
+}
 
+int main(){
+	lexer* l = new lexer("add: +");
+	l->lex("add_1: 1 add");
+	l->lex("1 2 +");
 
-	int eax = ((int(*)(void*))fun)((void*)engine);
-	cout << eax << " " << pushes << endl;
+	vm* engine = new vm();
+	engine->eval(l);
+	engine->eval(l);
+	engine->eval(l);
 
-	for (i = 0; i < engine->size; i++){
-		printf("%x\n", engine->stack[i]);
-	}
+	codegen* compiler = new codegen(engine);
+	jitter fun_handle = compiler->compile(l->il);
 
 	string lol;
 	cin >> lol;
+
 	return 0;
 }
 
