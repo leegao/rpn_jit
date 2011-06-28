@@ -43,12 +43,12 @@ int lol(vm* eng){
 }
 
 void print(int i){
-	cout << i << endl;
+	printf("%x\n", i);
 }
 
 int lol2(vm* eng){
-	int a = 3;
-	print(a);
+	int a;
+	a = eng->stack[eng->size + 1];
 	return 1;
 }
 
@@ -68,8 +68,16 @@ int main(){
 
 	vm* engine = new vm();
 	engine->eval(l);
+	engine->eval(l);
+	engine->eval(l);
 
-	lol2(engine);
+	//lol2(engine);
+
+	int i;
+	//for (i = 0; i < engine->size; i++){
+		//printf("%x\n", engine->stack[i]);
+	//}
+	//cout << "\n";
 
 	codegen* compiler = new codegen(engine);
 	int pushes = 0;
@@ -101,7 +109,7 @@ int main(){
 
 		0x8b, 0x45, 0x08,
 		0x8b, 0x48, 0x04,
-		0x83, 0xe3, pops,
+		0x83, 0xe9, pops,
 		0x8b, 0x55, 0x08,
 		0x89, 0x4a, 0x04
 	
@@ -148,9 +156,16 @@ int main(){
 		w(0x8b); w(0x48); w(0x04);
 		w(0x8b); w(0x55); w(0x08);
 		w(0x8b); w(0x02);
-		w(0x8b); w(0x8c); w(0x88); i(pre*4);
+		w(0x8b); w(0x4c); w(0x88); w((char)(pre*4));
 		w(0x89); w(0x4d); w(var);
 		local++;
+
+		/* // debug 
+		w(0x8b); w(0x45); w(var+4);
+		w(0x50);
+		w(0xb8); i((int)&print);
+		w(0xff); w(0xd0); // call eax
+		w(0x83); w(0xC4); w(0x04); // add 4 to the ESP */
 	}
 
 	// simulate one_plus_one: 2 1 +
@@ -159,16 +174,34 @@ int main(){
 	// local ++ (each push does this)
 	local++;
 
-	w(0x8b); w(0x45); w(var + 4);
-	w(0x50);
-	w(0xb8); i((int)&print);
-	w(0xff); w(0xd0); // call eax
-	w(0x83); w(0xC4); w(0x04); // add 4 to the ESP
+	/* // debug 
+		w(0x8b); w(0x45); w(var+4);
+		w(0x50);
+		w(0xb8); i((int)&print);
+		w(0xff); w(0xd0); // call eax
+		w(0x83); w(0xC4); w(0x04); // add 4 to the ESP */
 
 	// C7 45 F8 01 00 00 00		mov         dword ptr [i],1
 	w(0xc7); w(0x45); w(var); i(1);
 	// local ++ (each push does this)
 	local++;
+
+	/* // debug 
+		w(0x8b); w(0x45); w(var+4);
+		w(0x50);
+		w(0xb8); i((int)&print);
+		w(0xff); w(0xd0); // call eax
+		w(0x83); w(0xC4); w(0x04); // add 4 to the ESP */
+
+	// check that local > 1 
+	if (local < 2) {cerr << "JIT Compilation: Cannot compile code, insufficient stack space." << endl; return 0;}
+	// mov eax, local-2
+	w(0x8b); w(0x45); w(var + 8);
+	// add eax, local-1
+	w(0x03); w(0x45); w(var + 4);
+	local--;
+	// overwrite local-1 (what used to be local-2)
+	w(0x89); w(0x45); w(var + 4);
 
 	// check that local > 1 
 	if (local < 2) {cerr << "JIT Compilation: Cannot compile code, insufficient stack space." << endl; return 0;}
@@ -223,7 +256,6 @@ int main(){
 	int eax = ((int(*)(void*))fun)((void*)engine);
 	cout << eax << " " << pushes << endl;
 
-	int i;
 	for (i = 0; i < engine->size; i++){
 		printf("%x\n", engine->stack[i]);
 	}
