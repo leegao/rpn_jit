@@ -268,27 +268,3 @@ jitter codegen::compile(vector<int>* il){
 	return (jitter)fun;
 }
 
-int main(){
-	lexer* l = new lexer("add: +");
-	l->lex("add_1: 1 add");
-	l->lex("1 2 5 add add");
-
-	vm* engine = new vm();
-	engine->eval(l);
-	engine->eval(l);
-
-	codegen* compiler = new codegen(engine);
-	jitter fun = compiler->compile(l->il);
-
-	if (fun) fun(engine);
-
-	int i;
-	for (i = 0; i < engine->size; i++){
-		printf("%x\n", engine->stack[i]);
-	}
-
-	string lol;
-	cin >> lol;
-
-	return 0;
-}

@@ -7,8 +7,6 @@
 #include <vector>
 #include <map>
 
-
-
 class codegen{
 public:
 	vm* runtime;

@@ -9,6 +9,8 @@ struct inline_meta{int a; int b;};
 bool vm::eval(lexer* l){
 	// Naive implementation
 
+	if (!l->il) return false;
+
 	vector<struct inline_meta*> v;
 	int offset = 0, lptr = 0;
 
@@ -85,12 +87,13 @@ bool vm::eval(lexer* l){
 						cerr << "Runtime Error: Procedure does not exist." << endl;
 						return false;
 					}
-					if (l->procedures->at(index)->status > NORMAL)
-						cerr << "Debug: Inlined function encountered." << endl;
+					//if (l->procedures->at(index)->status > NORMAL)
+						//cerr << "Debug: Inlined function encountered." << endl;
 					
 					// check if jitted
 					jitter fun;
 					if ((fun = l->procedures->at(index)->jit)){
+						cerr << "Debug: Defaulting to JIT machinecode" << endl;
 						fun(this);
 					} else {
 						// evaluate the current chunk of code with context to the global lexer (pass in reference too)
@@ -151,3 +154,26 @@ bool vm::eval(lexer* l){
 	return true;
 }
 
+int main(){
+	lexer* l = new lexer();
+
+	vm* engine = new vm();
+
+	while (1){
+		char input[256];
+		cout << ">> ";
+		cin.getline(input, 256);
+		
+		l->lex(input);
+		engine->eval(l);
+		
+		int i;
+		for (i=0; i<engine->size; i++){
+			printf("%x ", engine->stack[i]);
+		}
+		cout << endl;
+	}
+
+
+	return 0;
+}
