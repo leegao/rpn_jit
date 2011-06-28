@@ -91,12 +91,16 @@ bool vm::eval(lexer* l){
 					lexer* proxy = new lexer(l, l->procedures->at(index)->il);
 					if (!eval(proxy)) return false;
 
+					(l->procedures->at(index)->calls)++;
+
 					// add in the metadata for procedure inlining
-					// once a procedure is flattened, track its call number to determine if it's a candidate for jitting (ie, 2 calls)
-					struct inline_meta* meta = new (struct inline_meta)();
-					meta->a = lptr;
-					meta->b = index;
-					v.push_back(meta);
+					// once a procedure is flattened, track its call number to determine if it's a candidate for jitting
+					if (l->procedures->at(index)->calls > 4){
+						struct inline_meta* meta = new (struct inline_meta)();
+						meta->a = lptr;
+						meta->b = index;
+						v.push_back(meta);
+					}
 				}
 			}
 		} else {
@@ -136,6 +140,7 @@ int main(){
 
 	vm* engine = new vm();
 	engine->eval(l);
+	//engine->eval(l);
 
 
 	int i;

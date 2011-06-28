@@ -35,6 +35,7 @@ struct procedure{
 	vector<int>* il;
 	unsigned char* hash;
 	unsigned char status;
+	int calls;
 };
 
 class lexer{
