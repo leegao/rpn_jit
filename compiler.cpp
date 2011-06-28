@@ -35,10 +35,16 @@ int codegen::get_pops(vector<int>* il, vector<struct procedure*>* procedures, in
 }
 
 int lol(vm* eng){
+	int i = 1;
 	int size = eng->size;
 	eng->size+=6;
 	eng->stack[eng->size] = 32;
 	return size;
+}
+
+int lol2(vm* eng){
+	eng->size -= 3;
+	return 1;
 }
 
 int main(){
@@ -57,11 +63,13 @@ int main(){
 	engine->eval(l);
 	engine->eval(l);
 
-	//lol(engine);
+	//lol2(engine);
 
 	codegen* compiler = new codegen(engine);
 	int pushes = 0;
 	int pops = compiler->get_pops(l->procedures->at(3)->il, l->procedures, &pushes);
+
+	pushes = 1; pops = 1;
 
 	int stack = offsetof(vm, stack), size = offsetof(vm, size);
 	unsigned char start[] = {
@@ -75,13 +83,30 @@ int main(){
 		0x57, // push edi
 		0x8d, 0xbd, 0x34, 0xff, 0xff, 0xff, // lea edi, [ebp-0xcc]
 
-		0xf3, 0xab// rep STOS dword ptr es:[edi]
+		0xf3, 0xab, // rep STOS dword ptr es:[edi]
+
+		/* Set the vm->stack to the correct position
+		00EA30BE 8B 45 08             mov         eax,dword ptr [eng]  
+		00EA30C1 8B 48 04             mov         ecx,dword ptr [eax+4]  
+		00EA30C4 83 E9 pops           sub         ecx,pops  
+		00EA30C7 8B 55 08             mov         edx,dword ptr [eng]  
+		00EA30CA 89 4A 04             mov         dword ptr [edx+4],ecx  
+		*/
+
+		0x8b, 0x45, 0x08,
+		0x8b, 0x48, 0x04,
+		0x83, 0xe3, pops,
+		0x8b, 0x55, 0x08,
+		0x89, 0x4a, 0x04
 	
 	}; 
 
 	unsigned char ret[] = {
 		// Return block here
 		//0x8b, 0x45, 0x100 - 8*(n), // move eax, prt[ebp - n]
+#define i(j) (((char*)(&j))[0]), (((char*)(&j))[1]), (((char*)(&j))[2]), (((char*)(&j))[3]),
+		0xb8, i(pushes)
+#undef i
 		
 		0x5f, // pop edi
 		0x5e, // pop esi
@@ -96,13 +121,52 @@ int main(){
 	char* fun = page;
 	page += sizeof(start);
 
+	int local = 1;
 	// Program logic starts here.
+#define w(ch) *(page++) = ch
+#define i(n) {int j = n; w((((char*)(&j))[0])); w((((char*)(&j))[1])); w((((char*)(&j))[2])); w((((char*)(&j))[3]));}
+#define var (0x100 - (local*8))
+
+	// simulate one_plus_one: 1 1 + +
+	// C7 45 F8 01 00 00 00		mov         dword ptr [i],1
+	w(0xc7); w(0x45); w(var); i(1);
+	// local ++ (each push does this)
+	local++;
+
+	// C7 45 F8 01 00 00 00		mov         dword ptr [i],1
+	w(0xc7); w(0x45); w(var); i(1);
+	// local ++ (each push does this)
+	local++;
+
+	// check that local > 2 (strictly), as local = 1 implies no locals
+	if (local < 3) {cerr << "JIT Compilation: Cannot compile code, insufficient stack space." << endl; return 0;}
+	// mov eax, local-2
+	w(0x8b); w(0x45); w(var + 16);
+	// add eax, local-1
+	w(0x03); w(0x45); w(var + 8);
+	local--;
+	// overwrite local-1 (what used to be local-2)
+	w(0x89); w(0x45); w(var + 8);
+
+	// check that local > 2 (strictly), as local = 1 implies no locals
+	if (local < 3) {cerr << "JIT Compilation: Cannot compile code, insufficient stack space." << endl; return 0;}
+	// mov eax, local-2
+	w(0x8b); w(0x45); w(var + 16);
+	// add eax, local-1
+	w(0x03); w(0x45); w(var + 8);
+	local--;
+	// overwrite local-1 (what used to be local-2)
+	w(0x89); w(0x45); w(var + 8);
+
+#undef var
+#undef i
+#undef w
 
 	memcpy(page, ret, sizeof(ret));
 
 
 	int eax = ((int(*)(void*))fun)((void*)engine);
-	cout << eax;
+	cout << eax << " " << pushes << endl;
 
 	string lol;
 	cin >> lol;
