@@ -43,7 +43,7 @@ int lol(vm* eng){
 }
 
 int lol2(vm* eng){
-	eng->size -= 3;
+	int a = eng->stack[eng->size + 0x100];
 	return 1;
 }
 
@@ -121,11 +121,31 @@ int main(){
 	char* fun = page;
 	page += sizeof(start);
 
-	int local = 1;
+	int local = 0;
 	// Program logic starts here.
 #define w(ch) *(page++) = ch
-#define i(n) {int j = n; w((((char*)(&j))[0])); w((((char*)(&j))[1])); w((((char*)(&j))[2])); w((((char*)(&j))[3]));}
-#define var (0x100 - (local*8))
+#define i(n) {int j = (n); w((((char*)(&j))[0])); w((((char*)(&j))[1])); w((((char*)(&j))[2])); w((((char*)(&j))[3]));}
+#define var (0x100 - 8 - (local*4))
+
+	int pre;
+	for (pre=0; pre<pops; pre++){
+		/*    46: 	int a = eng->stack[eng->size + 1];
+		011030BE 8B 45 08             mov         eax,dword ptr [eng]  
+		011030C1 8B 48 04             mov         ecx,dword ptr [eax+4]  
+		011030C4 8B 55 08             mov         edx,dword ptr [eng]  
+		011030C7 8B 02                mov         eax,dword ptr [edx]  
+		NOT THIS 011030C9 8B 4C 88 pre*4       mov         ecx,dword ptr [eax+ecx*4+pre*4]  
+		8B 8C 88 00 04 00 00
+		011030CD 89 4D var             mov         dword ptr [var],ecx  
+		*/
+		w(0x8b); w(0x45); w(0x08);
+		w(0x8b); w(0x48); w(0x04);
+		w(0x8b); w(0x55); w(0x08);
+		w(0x8b); w(0x02);
+		w(0x8b); w(0x8c); w(0x88); i(pre*4);
+		w(0x89); w(0x4d); w(var);
+		local++;
+	}
 
 	// simulate one_plus_one: 1 1 + +
 	// C7 45 F8 01 00 00 00		mov         dword ptr [i],1
@@ -138,25 +158,25 @@ int main(){
 	// local ++ (each push does this)
 	local++;
 
-	// check that local > 2 (strictly), as local = 1 implies no locals
-	if (local < 3) {cerr << "JIT Compilation: Cannot compile code, insufficient stack space." << endl; return 0;}
+	// check that local > 1 
+	if (local < 2) {cerr << "JIT Compilation: Cannot compile code, insufficient stack space." << endl; return 0;}
 	// mov eax, local-2
-	w(0x8b); w(0x45); w(var + 16);
+	w(0x8b); w(0x45); w(var + 8);
 	// add eax, local-1
-	w(0x03); w(0x45); w(var + 8);
+	w(0x03); w(0x45); w(var + 4);
 	local--;
 	// overwrite local-1 (what used to be local-2)
-	w(0x89); w(0x45); w(var + 8);
+	w(0x89); w(0x45); w(var + 4);
 
-	// check that local > 2 (strictly), as local = 1 implies no locals
-	if (local < 3) {cerr << "JIT Compilation: Cannot compile code, insufficient stack space." << endl; return 0;}
+	// check that local > 1 
+	if (local < 2) {cerr << "JIT Compilation: Cannot compile code, insufficient stack space." << endl; return 0;}
 	// mov eax, local-2
-	w(0x8b); w(0x45); w(var + 16);
+	w(0x8b); w(0x45); w(var + 8);
 	// add eax, local-1
-	w(0x03); w(0x45); w(var + 8);
+	w(0x03); w(0x45); w(var + 4);
 	local--;
 	// overwrite local-1 (what used to be local-2)
-	w(0x89); w(0x45); w(var + 8);
+	w(0x89); w(0x45); w(var + 4);
 
 #undef var
 #undef i
