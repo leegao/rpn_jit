@@ -47,8 +47,9 @@ void print(int i){ // debug only
 }
 
 int lol2(vm* eng){
-	int a;
-	a = eng->stack[eng->size + 1];
+	int a = 1;
+	int b = 2;
+	a = (int)pow((double)a,b);
 	return 1;
 }
 
@@ -161,16 +162,53 @@ jitter codegen::compile(vector<int>* il){
 				w(0x8b); w(0x45); w(var + 8);
 				// add eax, local-1
 				w(0x03); w(0x45); w(var + 4);
+				local--;
+				// overwrite local-1 (what used to be local-2)
+				w(0x89); w(0x45); w(var + 4);
 				break;
-			
+			case MINUS: 
+				// mov eax, local-2
+				w(0x8b); w(0x45); w(var + 8);
+				// sub eax, local-1
+				w(0x2b); w(0x45); w(var + 4);
+				local--;
+				// overwrite local-1 (what used to be local-2)
+				w(0x89); w(0x45); w(var + 4);
+				break;
+			case MUL:
+				// mov eax, local-2
+				w(0x8b); w(0x45); w(var + 8);
+				// imul eax, local-1
+				w(0x0f); w(0xaf); w(0x45); w(var + 4);
+				local--;
+				// overwrite local-1 (what used to be local-2)
+				w(0x89); w(0x45); w(var + 4);
+				break;
+			case DIV:
+				// mov eax, local-2
+				w(0x8b); w(0x45); w(var + 8);
+				// cdq; idiv eax, local-1
+				w(0x99); w(0xf7); w(0x7d); w(var + 4);
+				local--;
+				// overwrite local-1 (what used to be local-2)
+				w(0x89); w(0x45); w(var + 4);
+				break;
+			case MOD:
+				// mov eax, local-2
+				w(0x8b); w(0x45); w(var + 8);
+				// cdq; idiv eax, local-1
+				w(0x99); w(0xf7); w(0x7d); w(var + 4);
+				local--;
+				// overwrite local-1 (what used to be local-2)
+				w(0x89); w(0x55); w(var + 4);
+				break;
+
 			default:
 				cerr << "JIT Error: unknown operator" << endl; 
 				return 0;
 			}
 
-			local--;
-			// overwrite local-1 (what used to be local-2)
-			w(0x89); w(0x45); w(var + 4);
+			
 		} else { // Value
 			// C7 45 F8 01 00 00 00		mov         dword ptr [i],1
 			w(0xc7); w(0x45); w(var); i(op & VAL);
@@ -222,10 +260,12 @@ jitter codegen::compile(vector<int>* il){
 int main(){
 	lexer* l = new lexer("add: +");
 	l->lex("add_1: 1 add");
-	l->lex("1 2 add add_1");
+	l->lex("5 2 -");
 
 	vm* engine = new vm();
 	engine->eval(l);
+
+	//lol2(engine);
 
 	codegen* compiler = new codegen(engine);
 	jitter fun = compiler->compile(l->il);
