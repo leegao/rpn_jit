@@ -96,14 +96,13 @@ jitter codegen::compile(vector<int>* il){
 		0xc3
 	};
 
-	char* page = (char*)rwxalloc(1024);
-	memcpy(page, start, sizeof(start));
-	char* fun = page;
-	page += sizeof(start);
+	memcpy(runtime->page, start, sizeof(start));
+	char* fun = runtime->page;
+	runtime->page += sizeof(start);
 
 	int local = 0;
 	// Program logic starts here.
-#define w(ch) *(page++) = ch
+#define w(ch) *(runtime->page++) = ch
 #define i(n) {int j = (n); w((((char*)(&j))[0])); w((((char*)(&j))[1])); w((((char*)(&j))[2])); w((((char*)(&j))[3]));}
 #define var (0x100 - 8 - (local*4))
 
@@ -264,7 +263,8 @@ jitter codegen::compile(vector<int>* il){
 #undef i
 #undef w
 
-	memcpy(page, ret, sizeof(ret));
+	memcpy(runtime->page, ret, sizeof(ret));
+	runtime->page += sizeof(ret);
 	return (jitter)fun;
 }
 
